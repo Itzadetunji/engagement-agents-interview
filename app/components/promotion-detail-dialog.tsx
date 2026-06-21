@@ -1,18 +1,16 @@
-import type { LucideIcon } from "lucide-react";
+import type { ComponentType, SVGProps } from "react";
 import {
-  AtSign,
-  Camera,
   Clock,
   ExternalLink,
   Globe,
   Link2,
   MapPin,
-  Music2,
   Phone,
-  Share2,
-  Video,
 } from "lucide-react";
 import Image from "next/image";
+import { FacebookIcon } from "@/components/svg-icons/facebook-icon";
+import { InstagramIcon } from "@/components/svg-icons/instagram-icon";
+import { XIcon } from "@/components/svg-icons/x-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,19 +26,17 @@ function tagLabel(tag: string) {
   return tag.replace(/_/g, " ");
 }
 
-function socialIcon(platform: string): LucideIcon {
+type SocialIconComponent = ComponentType<SVGProps<SVGSVGElement>>;
+
+function socialIcon(platform: string): SocialIconComponent {
   switch (platform.toLowerCase()) {
     case "facebook":
-      return Share2;
+      return FacebookIcon;
     case "instagram":
-      return Camera;
+      return InstagramIcon;
     case "x":
     case "twitter":
-      return AtSign;
-    case "youtube":
-      return Video;
-    case "tiktok":
-      return Music2;
+      return XIcon;
     default:
       return Link2;
   }
