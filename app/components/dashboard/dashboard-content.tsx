@@ -5,14 +5,15 @@ import { useCallback, useEffect, useState } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { BackgroundScrapesBanner } from "@/components/dashboard/background-scrapes-banner";
+import { BrandGroupedSkeleton } from "@/components/dashboard/brand-grouped-skeleton";
 import { BrandGroupedView } from "@/components/dashboard/brand-grouped-view";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { PromotionsFilters } from "@/components/dashboard/promotions-filters";
 import { PromotionsTable } from "@/components/dashboard/promotions-table";
+import { PromotionsTableSkeleton } from "@/components/dashboard/promotions-table-skeleton";
 import { ViewToggle } from "@/components/dashboard/view-toggle";
 import { PromotionDetailDialog } from "@/components/promotion-detail-dialog";
 import { Pagination } from "@/components/ui/pagination";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
 	fetchBrands,
 	fetchPromotions,
@@ -188,11 +189,11 @@ export function DashboardContent() {
 			/>
 
 			{isLoading ? (
-				<div className="space-y-3">
-					{Array.from({ length: 5 }).map((_, i) => (
-						<Skeleton key={i} className="h-16 w-full" />
-					))}
-				</div>
+				groupByBrand ? (
+					<BrandGroupedSkeleton />
+				) : (
+					<PromotionsTableSkeleton />
+				)
 			) : groupByBrand ? (
 				<BrandGroupedView
 					brands={brandsQuery.data?.data ?? []}
