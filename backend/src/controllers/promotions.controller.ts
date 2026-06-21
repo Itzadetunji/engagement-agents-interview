@@ -21,7 +21,7 @@ const promotionsQuerySchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
   brand: z.string().optional(),
-  scrapeSessionId: z.string().uuid().optional(),
+  scrapeSessionId: z.uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce
     .number()
@@ -32,7 +32,7 @@ const promotionsQuerySchema = z.object({
 });
 
 const idParamSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
 });
 
 export function listPromotions(req: Request, res: Response): void {

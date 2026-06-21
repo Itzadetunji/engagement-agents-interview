@@ -7,7 +7,7 @@ import * as scrapeSessionRepo from "../db/scrapeSession.repository.js";
 import { sendError, sendSuccess } from "../middleware/response.helper.js";
 
 const brandsQuerySchema = z.object({
-  scrapeSessionId: z.string().uuid().optional(),
+  scrapeSessionId: z.uuid().optional(),
 });
 
 export function listBrands(req: Request, res: Response): void {

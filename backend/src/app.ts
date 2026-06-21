@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import morgan from "morgan";
 import { startScrape } from "./controllers/scrape.controller.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import brandsRoutes from "./routes/brands.routes.js";
@@ -11,6 +12,7 @@ export function createApp() {
   const app = express();
 
   app.use(cors());
+  app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
   app.use(express.json());
 
   app.get("/health", (_req, res) => {

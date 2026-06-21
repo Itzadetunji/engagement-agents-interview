@@ -5,7 +5,7 @@ import * as scrapeSessionRepo from "../db/scrapeSession.repository.js";
 import { sendError, sendSuccess } from "../middleware/response.helper.js";
 
 const sessionParamSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
 });
 
 export function listScrapeSessions(_req: Request, res: Response): void {

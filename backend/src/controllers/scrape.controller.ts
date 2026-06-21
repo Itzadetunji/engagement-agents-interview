@@ -8,7 +8,7 @@ import {
 import { sendError, sendSuccess } from "../middleware/response.helper.js";
 
 const jobParamSchema = z.object({
-  jobId: z.string().uuid(),
+  jobId: z.uuid(),
 });
 
 export function startScrape(_req: Request, res: Response): void {
