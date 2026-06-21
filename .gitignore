@@ -1,1 +1,13 @@
+# Backend
+node_modules/
+dist/
+data/
+*.db
+.env
+
+# Frontend
+app/.next/
+app/node_modules/
+
+# OS
 .DS_Store

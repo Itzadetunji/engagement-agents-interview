@@ -1,0 +1,27 @@
+import cors from "cors";
+import express from "express";
+import { startScrape } from "./controllers/scrape.controller.js";
+import { errorHandler } from "./middleware/error.middleware.js";
+import brandsRoutes from "./routes/brands.routes.js";
+import promotionsRoutes from "./routes/promotions.routes.js";
+import scrapeRoutes from "./routes/scrape.routes.js";
+
+export function createApp() {
+  const app = express();
+
+  app.use(cors());
+  app.use(express.json());
+
+  app.get("/health", (_req, res) => {
+    res.json({ success: true, message: "OK" });
+  });
+
+  app.use("/promotions", promotionsRoutes);
+  app.use("/brands", brandsRoutes);
+  app.post("/scrape", startScrape);
+  app.use("/scrape", scrapeRoutes);
+
+  app.use(errorHandler);
+
+  return app;
+}
