@@ -5,15 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { BackgroundScrapesBanner } from "@/components/dashboard/background-scrapes-banner";
-import { BrandGroupedSkeleton } from "@/components/dashboard/brand-grouped-skeleton";
-import { BrandGroupedView } from "@/components/dashboard/brand-grouped-view";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { DashboardViewTabs } from "@/components/dashboard/dashboard-view-tabs";
 import { PromotionsFilters } from "@/components/dashboard/promotions-filters";
-import { PromotionsTable } from "@/components/dashboard/promotions-table";
-import { PromotionsTableSkeleton } from "@/components/dashboard/promotions-table-skeleton";
-import { ViewToggle } from "@/components/dashboard/view-toggle";
 import { PromotionDetailDialog } from "@/components/promotion-detail-dialog";
-import { Pagination } from "@/components/ui/pagination";
 import {
 	fetchBrands,
 	fetchPromotions,
@@ -30,6 +25,8 @@ import {
 	type PromotionWithBrand,
 } from "@shared/promotion";
 
+type DashboardView = "list" | "brand";
+
 export function DashboardContent() {
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
@@ -41,7 +38,7 @@ export function DashboardContent() {
 	const [orderBy, setOrderBy] = useState<PromotionOrderBy>(
 		DEFAULT_PROMOTION_ORDER_BY,
 	);
-	const [groupByBrand, setGroupByBrand] = useState(false);
+	const [view, setView] = useState<DashboardView>("list");
 	const [selectedPromotion, setSelectedPromotion] =
 		useState<PromotionWithBrand | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,6 +55,7 @@ export function DashboardContent() {
 	});
 
 	const sessions = scrapeSessionsQuery.data?.data ?? [];
+	const selectedSession = sessions.find((s) => s.id === scrapeSessionId);
 
 	const handleScrapeStarted = useCallback(
 		(payload: { sessionName: string }) => {
@@ -107,6 +105,8 @@ export function DashboardContent() {
 		setPage(1);
 	}, [debouncedSearch]);
 
+	const groupByBrand = view === "brand";
+
 	const promotionsQuery = useQuery({
 		queryKey: [
 			"promotions",
@@ -151,7 +151,6 @@ export function DashboardContent() {
 		(groupByBrand ? brandsQuery.isLoading : promotionsQuery.isLoading);
 
 	const pagination = promotionsQuery.data?.meta?.pagination;
-
 	const resetPage = () => setPage(1);
 
 	return (
@@ -185,43 +184,28 @@ export function DashboardContent() {
 				}}
 			/>
 
-			<ViewToggle
-				groupByBrand={groupByBrand}
-				onListView={() => setGroupByBrand(false)}
-				onGroupByBrand={() => setGroupByBrand(true)}
+			<DashboardViewTabs
+				view={view}
+				onViewChange={setView}
+				isLoading={isLoading}
+				sessionName={selectedSession?.name}
+				debouncedSearch={debouncedSearch}
+				dateRange={dateRange}
+				brand={brand}
+				orderBy={orderBy}
+				promotions={promotionsQuery.data?.data ?? []}
+				brands={brandsQuery.data?.data ?? []}
+				pagination={pagination}
+				onSort={(field) => {
+					setOrderBy((current) => toggleOrderBy(current, field));
+					resetPage();
+				}}
+				onSelectPromotion={openPromotion}
+				onClearSearch={() => setSearch("")}
+				onClearDateRange={() => setDateRange(undefined)}
+				onClearBrand={() => setBrand("")}
+				onPageChange={setPage}
 			/>
-
-			{isLoading ? (
-				groupByBrand ? (
-					<BrandGroupedSkeleton />
-				) : (
-					<PromotionsTableSkeleton />
-				)
-			) : groupByBrand ? (
-				<BrandGroupedView
-					brands={brandsQuery.data?.data ?? []}
-					onSelectPromotion={openPromotion}
-				/>
-			) : (
-				<div className="flex min-w-0 flex-col gap-4">
-					<PromotionsTable
-						items={promotionsQuery.data?.data ?? []}
-						orderBy={orderBy}
-						onSort={(field) => {
-							setOrderBy((current) => toggleOrderBy(current, field));
-							resetPage();
-						}}
-						onSelectPromotion={openPromotion}
-					/>
-					{pagination && pagination.total_pages > 1 && (
-						<Pagination
-							currentPage={pagination.current_page}
-							totalPages={pagination.total_pages}
-							onPageChange={setPage}
-						/>
-					)}
-				</div>
-			)}
 
 			<PromotionDetailDialog
 				promotion={selectedPromotion}
