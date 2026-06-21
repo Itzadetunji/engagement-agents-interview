@@ -9,6 +9,7 @@
       "backend": {
           "root": "backend",
           "routePrefix": "/_/backend",
+          "framework": "express",
           "buildCommand": "cd backend && bun install --frozen-lockfile && bun run typecheck"
       }
   }
