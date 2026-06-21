@@ -8,7 +8,6 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardViewTabs } from "@/components/dashboard/dashboard-view-tabs";
 import { PromotionsFilters } from "@/components/dashboard/promotions-filters";
 import { PromotionDetailDialog } from "@/components/promotion-detail-dialog";
-import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import {
 	fetchBrands,
 	fetchPromotions,
@@ -27,9 +26,15 @@ import { ScrapeSession } from "@shared/scrapeSession";
 
 export function DashboardContent() {
 	const queryClient = useQueryClient();
-	const { dateRange, brand, scrapeSessionId, page, orderBy, isGroupByBrand } =
-		useDashboardFilters();
-	const debouncedSearch = useDebouncedSearch();
+	const {
+		dateRange,
+		scrapeSessionId,
+		page,
+		orderBy,
+		isGroupByBrand,
+		debouncedSearch,
+		debouncedBrand,
+	} = useDashboardFilters();
 	const setScrapeSession = useDashboardFiltersStore((s) => s.setScrapeSession);
 	const resetPage = useDashboardFiltersStore((s) => s.resetPage);
 
@@ -99,7 +104,7 @@ export function DashboardContent() {
 
 	useEffect(() => {
 		resetPage();
-	}, [debouncedSearch, resetPage]);
+	}, [debouncedSearch, debouncedBrand, resetPage]);
 
 	const promotionsQuery = useQuery({
 		queryKey: [
@@ -108,7 +113,7 @@ export function DashboardContent() {
 			debouncedSearch,
 			dateRange?.from,
 			dateRange?.to,
-			brand,
+			debouncedBrand,
 			orderBy,
 			page,
 		],
@@ -118,7 +123,7 @@ export function DashboardContent() {
 				search: debouncedSearch || undefined,
 				startDate: toApiDate(dateRange?.from),
 				endDate: toApiDate(dateRange?.to),
-				brand: brand || undefined,
+				brand: debouncedBrand || undefined,
 				orderBy,
 				page,
 				pageSize: 10,

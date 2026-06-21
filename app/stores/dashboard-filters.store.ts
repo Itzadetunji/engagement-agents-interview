@@ -1,5 +1,6 @@
 import type { DateRange } from "react-day-picker";
 import { create } from "zustand";
+import { useDebounce } from "@/hooks/use-debounce";
 import { toggleOrderBy } from "@/lib/promotion-sort";
 import {
 	DEFAULT_PROMOTION_ORDER_BY,
@@ -48,10 +49,7 @@ export const useDashboardFiltersStore = create<DashboardFiltersState>(
 			set({ dateRange });
 			get().resetPage();
 		},
-		setBrand: (brand) => {
-			set({ brand });
-			get().resetPage();
-		},
+		setBrand: (brand) => set({ brand }),
 		setScrapeSession: (id, name) => {
 			set({ scrapeSessionId: id, scrapeSessionName: name });
 			get().resetPage();
@@ -76,6 +74,8 @@ export const useDashboardFiltersStore = create<DashboardFiltersState>(
 	}),
 );
 
+const TEXT_FILTER_DEBOUNCE_MS = 300;
+
 export function useDashboardFilters() {
 	const search = useDashboardFiltersStore((s) => s.search);
 	const dateRange = useDashboardFiltersStore((s) => s.dateRange);
@@ -85,11 +85,15 @@ export function useDashboardFilters() {
 	const page = useDashboardFiltersStore((s) => s.page);
 	const orderBy = useDashboardFiltersStore((s) => s.orderBy);
 	const view = useDashboardFiltersStore((s) => s.view);
+	const debouncedSearch = useDebounce(search, TEXT_FILTER_DEBOUNCE_MS);
+	const debouncedBrand = useDebounce(brand, TEXT_FILTER_DEBOUNCE_MS);
 
 	return {
 		search,
 		dateRange,
 		brand,
+		debouncedSearch,
+		debouncedBrand,
 		scrapeSessionId,
 		scrapeSessionName,
 		page,

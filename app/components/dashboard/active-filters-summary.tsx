@@ -2,9 +2,11 @@ import { format } from "date-fns";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { formatOrderByLabel } from "@/lib/promotion-sort";
-import { useDashboardFiltersStore } from "@/stores/dashboard-filters.store";
+import {
+	useDashboardFilters,
+	useDashboardFiltersStore,
+} from "@/stores/dashboard-filters.store";
 
 interface FilterChip {
 	key: string;
@@ -16,13 +18,12 @@ export function ActiveFiltersSummary() {
 	const view = useDashboardFiltersStore((s) => s.view);
 	const scrapeSessionName = useDashboardFiltersStore((s) => s.scrapeSessionName);
 	const dateRange = useDashboardFiltersStore((s) => s.dateRange);
-	const brand = useDashboardFiltersStore((s) => s.brand);
 	const orderBy = useDashboardFiltersStore((s) => s.orderBy);
 	const clearSearch = useDashboardFiltersStore((s) => s.clearSearch);
 	const clearDateRange = useDashboardFiltersStore((s) => s.clearDateRange);
 	const clearBrand = useDashboardFiltersStore((s) => s.clearBrand);
 
-	const debouncedSearch = useDebouncedSearch();
+	const { debouncedSearch, debouncedBrand } = useDashboardFilters();
 
 	const chips: FilterChip[] = [];
 
@@ -49,10 +50,10 @@ export function ActiveFiltersSummary() {
 			});
 		}
 
-		if (brand) {
+		if (debouncedBrand) {
 			chips.push({
 				key: "brand",
-				label: `Brand: ${brand}`,
+				label: `Brand: ${debouncedBrand}`,
 				onClear: clearBrand,
 			});
 		}
