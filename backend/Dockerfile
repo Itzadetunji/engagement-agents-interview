@@ -11,7 +11,9 @@ COPY backend/package.json backend/package-lock.json ./backend/
 WORKDIR /workspace/backend
 RUN npm ci
 
-COPY backend/ ./
+COPY backend/src ./src
+COPY backend/tsconfig.json ./
+
 ENV DATABASE_PATH=/workspace/backend/data/promotions.db
 EXPOSE 3001
 CMD ["npm", "run", "start"]
