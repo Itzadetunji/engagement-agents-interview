@@ -22,17 +22,12 @@ import {
 	useDashboardFiltersStore,
 } from "@/stores/dashboard-filters.store";
 import type { PromotionWithBrand } from "@shared/promotion";
+import { ScrapeSession } from "@shared/scrapeSession";
 
 export function DashboardContent() {
 	const queryClient = useQueryClient();
-	const {
-		dateRange,
-		brand,
-		scrapeSessionId,
-		page,
-		orderBy,
-		isGroupByBrand,
-	} = useDashboardFilters();
+	const { dateRange, brand, scrapeSessionId, page, orderBy, isGroupByBrand } =
+		useDashboardFilters();
 	const debouncedSearch = useDebouncedSearch();
 	const setScrapeSession = useDashboardFiltersStore((s) => s.setScrapeSession);
 	const resetPage = useDashboardFiltersStore((s) => s.resetPage);
@@ -52,7 +47,9 @@ export function DashboardContent() {
 		refetchInterval: 30_000,
 	});
 
-	const sessions = scrapeSessionsQuery.data?.data ?? [];
+	const sessions = scrapeSessionsQuery.data?.data as
+		| ScrapeSession[]
+		| undefined;
 
 	const handleScrapeStarted = useCallback(
 		(payload: { sessionName: string }) => {
@@ -93,7 +90,7 @@ export function DashboardContent() {
 	});
 
 	useEffect(() => {
-		if (sessions.length > 0 && !scrapeSessionId) {
+		if (sessions && sessions.length > 0 && !scrapeSessionId) {
 			setScrapeSession(sessions[0].id, sessions[0].name);
 		}
 	}, [sessions, scrapeSessionId, setScrapeSession]);

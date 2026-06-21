@@ -34,7 +34,10 @@ export interface ScrapeSocketHandlers {
 
 export function useScrapeSocket(handlers: ScrapeSocketHandlers) {
   const handlersRef = useRef(handlers);
-  handlersRef.current = handlers;
+
+  useEffect(() => {
+    handlersRef.current = handlers;
+  }, [handlers]);
 
   const [connected, setConnected] = useState(false);
   const [runningSessionIds, setRunningSessionIds] = useState<Set<string>>(

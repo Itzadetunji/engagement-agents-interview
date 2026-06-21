@@ -4,12 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { DateRange } from "react-day-picker";
 import { DateRangePicker } from "@/components/date-picker";
 import { FilterField } from "@/components/dashboard/filter-field";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
 	Select,
@@ -20,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { fetchScrapeSessions } from "@/lib/api";
 import { useDashboardFiltersStore } from "@/stores/dashboard-filters.store";
+import { ScrapeSession } from "@shared/scrapeSession";
 
 export function PromotionsFilters({
 	runningSessionIds,
@@ -39,7 +35,8 @@ export function PromotionsFilters({
 		queryKey: ["scrapeSessions"],
 		queryFn: fetchScrapeSessions,
 	});
-	const sessions = sessionsResponse?.data ?? [];
+	const sessions =
+		(sessionsResponse?.data as ScrapeSession[] | undefined) ?? [];
 
 	return (
 		<Card>
@@ -47,7 +44,10 @@ export function PromotionsFilters({
 				<CardTitle className="text-base">Filters</CardTitle>
 			</CardHeader>
 			<CardContent className="grid gap-4 px-4 pb-4 sm:grid-cols-2 sm:px-6 sm:pb-6 lg:grid-cols-4">
-				<FilterField label="Scrape session" htmlFor="filter-scrape-session">
+				<FilterField
+					label="Scrape session"
+					htmlFor="filter-scrape-session"
+				>
 					<Select
 						value={scrapeSessionId || undefined}
 						onValueChange={(value) => {
@@ -56,7 +56,10 @@ export function PromotionsFilters({
 						}}
 						disabled={sessions.length === 0}
 					>
-						<SelectTrigger id="filter-scrape-session" className="w-full">
+						<SelectTrigger
+							id="filter-scrape-session"
+							className="w-full"
+						>
 							<SelectValue
 								placeholder={
 									sessions.length === 0 ? "No scrapes yet" : "Select a scrape"
@@ -67,7 +70,10 @@ export function PromotionsFilters({
 							{sessions.map((session) => {
 								const isRunning = runningSessionIds.has(session.id);
 								return (
-									<SelectItem key={session.id} value={session.id}>
+									<SelectItem
+										key={session.id}
+										value={session.id}
+									>
 										{session.name}
 										{isRunning
 											? " (scraping…)"
@@ -79,7 +85,10 @@ export function PromotionsFilters({
 					</Select>
 				</FilterField>
 
-				<FilterField label="Search" htmlFor="filter-search">
+				<FilterField
+					label="Search"
+					htmlFor="filter-search"
+				>
 					<Input
 						id="filter-search"
 						placeholder="Search name or brand"
@@ -88,7 +97,10 @@ export function PromotionsFilters({
 					/>
 				</FilterField>
 
-				<FilterField label="Date range" htmlFor="filter-date-range">
+				<FilterField
+					label="Date range"
+					htmlFor="filter-date-range"
+				>
 					<DateRangePicker
 						id="filter-date-range"
 						range={dateRange}
@@ -99,7 +111,10 @@ export function PromotionsFilters({
 					/>
 				</FilterField>
 
-				<FilterField label="Brand" htmlFor="filter-brand">
+				<FilterField
+					label="Brand"
+					htmlFor="filter-brand"
+				>
 					<Input
 						id="filter-brand"
 						placeholder="Brand name"
