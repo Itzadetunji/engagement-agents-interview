@@ -4,47 +4,44 @@ Single-mall MVP that scrapes promotions from [The Promenade Shops at Briargate](
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) 20+
-- [npm](https://www.npmjs.com/) 10+
-- [Docker](https://www.docker.com/) (optional, for one-command startup)
+- [Bun](https://bun.sh) 1.1+
+- [Node.js](https://nodejs.org/) 20+ (backend runs via `tsx` on Node for `better-sqlite3`)
 
-## Quick start (Docker)
-
-```bash
-cp .env.example .env
-docker compose up --build
-```
-
-- UI: http://localhost:3000/dashboard
-- API: http://localhost:3001
-
-## Local development
-
-### 1. Environment
+## Setup
 
 ```bash
 cp .env.example .env
 ```
 
-### 2. Backend
+### Backend
 
 ```bash
 cd backend
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
-API runs at http://localhost:3001
+API: http://localhost:3001
 
-### 3. Frontend
+### Frontend
 
 ```bash
 cd app
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
-UI runs at http://localhost:3000
+UI: http://localhost:3000/dashboard
+
+## Build for production
+
+```bash
+# Backend — compile TypeScript
+cd backend && bun run build
+
+# Frontend — Next.js production build
+cd app && bun run build && bun run start
+```
 
 ## Trigger a scrape
 
@@ -54,14 +51,7 @@ UI runs at http://localhost:3000
 
 ```bash
 curl -X POST http://localhost:3001/scrape
-# => { "success": true, "data": { "jobId": "..." } }
-
 curl http://localhost:3001/scrape/<jobId>
-```
-
-Poll until `status` is `done` or `failed`, then browse results:
-
-```bash
 curl "http://localhost:3001/promotions?page=1&pageSize=10"
 curl http://localhost:3001/brands
 ```
@@ -79,11 +69,8 @@ curl http://localhost:3001/brands
 ## Scripts
 
 ```bash
-# Backend typecheck
-cd backend && npm run typecheck
-
-# Frontend lint + build
-cd app && npm run lint && npm run build
+cd backend && bun run typecheck
+cd app && bun run lint && bun run build
 ```
 
 ## Project structure
@@ -95,14 +82,6 @@ app/            Next.js dashboard (shadcn/ui)
 DESIGN.md       Architecture and trade-offs
 ASSUMPTIONS.md  Interpretations of ambiguous requirements
 ```
-
-## Known limitations
-
-- Single portal only (hard-coded URL)
-- No authentication (local open API)
-- Scrape runs sequentially with ~500 ms delay between requests
-- Promotions removed from the source site are retained in the DB (upsert-only)
-- Docker frontend uses `localhost:3001` for API calls from the browser
 
 ## Documentation
 

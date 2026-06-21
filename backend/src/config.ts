@@ -1,7 +1,7 @@
 import "dotenv/config";
 
 export const config = {
-  port: Number(process.env.API_PORT ?? 3001),
+  port: Number(process.env.PORT ?? process.env.API_PORT ?? 3001),
   baseUrl: "https://www.thepromenadeshopsatbriargate.com",
   sourcePortal: "thepromenadeshopsatbriargate.com",
   dbPath: process.env.DATABASE_PATH ?? "./data/promotions.db",

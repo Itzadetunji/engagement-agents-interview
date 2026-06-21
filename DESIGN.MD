@@ -16,10 +16,10 @@ The stack is intentionally small and local-first:
 |---|---|---|
 | Frontend | Next.js (App Router) + shadcn/ui | Typed React UI with accessible components; matches brief bonus stack |
 | Backend | Express + TypeScript (MVC) | Separate API server; clear separation of scraping from presentation |
-| Database | SQLite | Zero-config persistence; sufficient for single-portal MVP; easy to mount in Docker |
+| Database | SQLite | Zero-config persistence; sufficient for single-portal MVP |
 | Scraper | Axios + Cheerio | Axios handles redirects and real-world HTTP reliably; Cheerio parses server-rendered HTML |
 | Shared types | Root `types/` folder | Single source of truth from scraper → API → UI |
-| Runtime | Docker Compose | One-command local startup per brief NFR-1 |
+| Runtime | Bun + local dev servers | `bun run dev` in `backend/` and `app/` |
 
 **Authentication is intentionally omitted.** The take-home brief lists auth as a non-goal; the API is open on localhost.
 
@@ -337,7 +337,7 @@ Scrape errors never crash the Express process. The global error middleware retur
 | Hard-delete stale promotions on re-scrape | Risk of data loss; upsert-only is safer for a demo |
 | Promotion detail page in UI | Bonus in brief; dashboard list + group view covers core stories |
 | Automated test suite | Time-boxed; manual smoke test via README steps |
-| Production deployment | Local Docker only per brief |
+| Production deployment | Not containerized; run via `bun run build` + `bun run start` per service |
 
 ### With another 4 hours
 
@@ -349,11 +349,13 @@ Scrape errors never crash the Express process. The global error middleware retur
 
 ---
 
-## 10. Docker
+## 10. Local development
 
-`docker-compose.yml` runs two services:
+Run each service independently with Bun:
 
-- **backend** — Express on `:3001`, SQLite file mounted as a volume
-- **app** — Next.js on `:3000`, `NEXT_PUBLIC_API_URL` pointing at backend
+```bash
+cd backend && bun install && bun run dev   # http://localhost:3001
+cd app && bun install && bun run dev       # http://localhost:3000
+```
 
-One command (`docker compose up`) brings up the full stack. See `README.md` for exact commands and env vars (`.env.example`).
+See `README.md` for build commands and env vars (`.env.example`).
