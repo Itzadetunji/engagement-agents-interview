@@ -1,3 +1,6 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
 import type { DateRange } from "react-day-picker";
 import { DateRangePicker } from "@/components/date-picker";
 import { FilterField } from "@/components/dashboard/filter-field";
@@ -15,31 +18,29 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { ScrapeSession } from "@shared/scrapeSession";
+import { fetchScrapeSessions } from "@/lib/api";
+import { useDashboardFiltersStore } from "@/stores/dashboard-filters.store";
 
 export function PromotionsFilters({
-	sessions,
-	scrapeSessionId,
 	runningSessionIds,
-	search,
-	dateRange,
-	brand,
-	onScrapeSessionChange,
-	onSearchChange,
-	onDateRangeChange,
-	onBrandChange,
 }: {
-	sessions: ScrapeSession[];
-	scrapeSessionId: string;
 	runningSessionIds: Set<string>;
-	search: string;
-	dateRange: DateRange | undefined;
-	brand: string;
-	onScrapeSessionChange: (value: string) => void;
-	onSearchChange: (value: string) => void;
-	onDateRangeChange: (range: DateRange | undefined) => void;
-	onBrandChange: (value: string) => void;
 }) {
+	const search = useDashboardFiltersStore((s) => s.search);
+	const dateRange = useDashboardFiltersStore((s) => s.dateRange);
+	const brand = useDashboardFiltersStore((s) => s.brand);
+	const scrapeSessionId = useDashboardFiltersStore((s) => s.scrapeSessionId);
+	const setSearch = useDashboardFiltersStore((s) => s.setSearch);
+	const setDateRange = useDashboardFiltersStore((s) => s.setDateRange);
+	const setBrand = useDashboardFiltersStore((s) => s.setBrand);
+	const setScrapeSession = useDashboardFiltersStore((s) => s.setScrapeSession);
+
+	const { data: sessionsResponse } = useQuery({
+		queryKey: ["scrapeSessions"],
+		queryFn: fetchScrapeSessions,
+	});
+	const sessions = sessionsResponse?.data ?? [];
+
 	return (
 		<Card>
 			<CardHeader className="px-4 py-4 sm:px-6">
@@ -49,7 +50,10 @@ export function PromotionsFilters({
 				<FilterField label="Scrape session" htmlFor="filter-scrape-session">
 					<Select
 						value={scrapeSessionId || undefined}
-						onValueChange={onScrapeSessionChange}
+						onValueChange={(value) => {
+							const session = sessions.find((s) => s.id === value);
+							setScrapeSession(value, session?.name ?? "");
+						}}
 						disabled={sessions.length === 0}
 					>
 						<SelectTrigger id="filter-scrape-session" className="w-full">
@@ -80,7 +84,7 @@ export function PromotionsFilters({
 						id="filter-search"
 						placeholder="Search name or brand"
 						value={search}
-						onChange={(e) => onSearchChange(e.target.value)}
+						onChange={(e) => setSearch(e.target.value)}
 					/>
 				</FilterField>
 
@@ -88,7 +92,9 @@ export function PromotionsFilters({
 					<DateRangePicker
 						id="filter-date-range"
 						range={dateRange}
-						onRangeChange={onDateRangeChange}
+						onRangeChange={(range: DateRange | undefined) =>
+							setDateRange(range)
+						}
 						placeholder="Pick a date range"
 					/>
 				</FilterField>
@@ -98,7 +104,7 @@ export function PromotionsFilters({
 						id="filter-brand"
 						placeholder="Brand name"
 						value={brand}
-						onChange={(e) => onBrandChange(e.target.value)}
+						onChange={(e) => setBrand(e.target.value)}
 					/>
 				</FilterField>
 			</CardContent>

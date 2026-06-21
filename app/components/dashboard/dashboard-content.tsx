@@ -2,43 +2,41 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { BackgroundScrapesBanner } from "@/components/dashboard/background-scrapes-banner";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardViewTabs } from "@/components/dashboard/dashboard-view-tabs";
 import { PromotionsFilters } from "@/components/dashboard/promotions-filters";
 import { PromotionDetailDialog } from "@/components/promotion-detail-dialog";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import {
 	fetchBrands,
 	fetchPromotions,
 	fetchScrapeSessions,
 	triggerScrape,
 } from "@/lib/api";
-import { toggleOrderBy } from "@/lib/promotion-sort";
 import { toApiDate } from "@/lib/promotion-utils";
 import { useScrapeSocket } from "@/lib/scrape-socket";
-import { useDebounce } from "@/hooks/use-debounce";
 import {
-	DEFAULT_PROMOTION_ORDER_BY,
-	type PromotionOrderBy,
-	type PromotionWithBrand,
-} from "@shared/promotion";
-
-type DashboardView = "list" | "brand";
+	useDashboardFilters,
+	useDashboardFiltersStore,
+} from "@/stores/dashboard-filters.store";
+import type { PromotionWithBrand } from "@shared/promotion";
 
 export function DashboardContent() {
 	const queryClient = useQueryClient();
-	const [search, setSearch] = useState("");
-	const debouncedSearch = useDebounce(search, 300);
-	const [dateRange, setDateRange] = useState<DateRange | undefined>();
-	const [brand, setBrand] = useState("");
-	const [scrapeSessionId, setScrapeSessionId] = useState<string>("");
-	const [page, setPage] = useState(1);
-	const [orderBy, setOrderBy] = useState<PromotionOrderBy>(
-		DEFAULT_PROMOTION_ORDER_BY,
-	);
-	const [view, setView] = useState<DashboardView>("list");
+	const {
+		dateRange,
+		brand,
+		scrapeSessionId,
+		page,
+		orderBy,
+		isGroupByBrand,
+	} = useDashboardFilters();
+	const debouncedSearch = useDebouncedSearch();
+	const setScrapeSession = useDashboardFiltersStore((s) => s.setScrapeSession);
+	const resetPage = useDashboardFiltersStore((s) => s.resetPage);
+
 	const [selectedPromotion, setSelectedPromotion] =
 		useState<PromotionWithBrand | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
@@ -55,7 +53,6 @@ export function DashboardContent() {
 	});
 
 	const sessions = scrapeSessionsQuery.data?.data ?? [];
-	const selectedSession = sessions.find((s) => s.id === scrapeSessionId);
 
 	const handleScrapeStarted = useCallback(
 		(payload: { sessionName: string }) => {
@@ -97,15 +94,13 @@ export function DashboardContent() {
 
 	useEffect(() => {
 		if (sessions.length > 0 && !scrapeSessionId) {
-			setScrapeSessionId(sessions[0].id);
+			setScrapeSession(sessions[0].id, sessions[0].name);
 		}
-	}, [sessions, scrapeSessionId]);
+	}, [sessions, scrapeSessionId, setScrapeSession]);
 
 	useEffect(() => {
-		setPage(1);
-	}, [debouncedSearch]);
-
-	const groupByBrand = view === "brand";
+		resetPage();
+	}, [debouncedSearch, resetPage]);
 
 	const promotionsQuery = useQuery({
 		queryKey: [
@@ -129,13 +124,13 @@ export function DashboardContent() {
 				page,
 				pageSize: 10,
 			}),
-		enabled: !groupByBrand && !!scrapeSessionId,
+		enabled: !isGroupByBrand && !!scrapeSessionId,
 	});
 
 	const brandsQuery = useQuery({
 		queryKey: ["brands", scrapeSessionId],
 		queryFn: () => fetchBrands(scrapeSessionId || undefined),
-		enabled: groupByBrand && !!scrapeSessionId,
+		enabled: isGroupByBrand && !!scrapeSessionId,
 	});
 
 	const scrapeMutation = useMutation({
@@ -148,10 +143,9 @@ export function DashboardContent() {
 
 	const isLoading =
 		scrapeSessionsQuery.isLoading ||
-		(groupByBrand ? brandsQuery.isLoading : promotionsQuery.isLoading);
+		(isGroupByBrand ? brandsQuery.isLoading : promotionsQuery.isLoading);
 
 	const pagination = promotionsQuery.data?.meta?.pagination;
-	const resetPage = () => setPage(1);
 
 	return (
 		<div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 p-4 sm:gap-6 sm:p-6">
@@ -162,49 +156,14 @@ export function DashboardContent() {
 
 			<BackgroundScrapesBanner count={runningSessionIds.size} />
 
-			<PromotionsFilters
-				sessions={sessions}
-				scrapeSessionId={scrapeSessionId}
-				runningSessionIds={runningSessionIds}
-				search={search}
-				dateRange={dateRange}
-				brand={brand}
-				onScrapeSessionChange={(value) => {
-					setScrapeSessionId(value);
-					resetPage();
-				}}
-				onSearchChange={setSearch}
-				onDateRangeChange={(range) => {
-					setDateRange(range);
-					resetPage();
-				}}
-				onBrandChange={(value) => {
-					setBrand(value);
-					resetPage();
-				}}
-			/>
+			<PromotionsFilters runningSessionIds={runningSessionIds} />
 
 			<DashboardViewTabs
-				view={view}
-				onViewChange={setView}
 				isLoading={isLoading}
-				sessionName={selectedSession?.name}
-				debouncedSearch={debouncedSearch}
-				dateRange={dateRange}
-				brand={brand}
-				orderBy={orderBy}
 				promotions={promotionsQuery.data?.data ?? []}
 				brands={brandsQuery.data?.data ?? []}
 				pagination={pagination}
-				onSort={(field) => {
-					setOrderBy((current) => toggleOrderBy(current, field));
-					resetPage();
-				}}
 				onSelectPromotion={openPromotion}
-				onClearSearch={() => setSearch("")}
-				onClearDateRange={() => setDateRange(undefined)}
-				onClearBrand={() => setBrand("")}
-				onPageChange={setPage}
 			/>
 
 			<PromotionDetailDialog

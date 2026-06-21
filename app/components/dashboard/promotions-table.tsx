@@ -12,19 +12,18 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { PromotionOrderBy, PromotionWithBrand } from "@shared/promotion";
+import type { PromotionWithBrand } from "@shared/promotion";
+import { useDashboardFiltersStore } from "@/stores/dashboard-filters.store";
 
 export function PromotionsTable({
 	items,
-	orderBy,
-	onSort,
 	onSelectPromotion,
 }: {
 	items: PromotionWithBrand[];
-	orderBy: PromotionOrderBy;
-	onSort: (field: string) => void;
 	onSelectPromotion: (promotion: PromotionWithBrand) => void;
 }) {
+	const orderBy = useDashboardFiltersStore((s) => s.orderBy);
+	const sortBy = useDashboardFiltersStore((s) => s.sortBy);
 	if (items.length === 0) {
 		return (
 			<Card className="border border-border">
@@ -45,29 +44,29 @@ export function PromotionsTable({
 								<SortableTableHead
 									label="Promotion"
 									field="name"
-									orderBy={orderBy}
-									onSort={onSort}
+								orderBy={orderBy}
+								onSort={sortBy}
 									className="min-w-[180px]"
 								/>
 								<SortableTableHead
 									label="Brand"
 									field="brand"
-									orderBy={orderBy}
-									onSort={onSort}
+								orderBy={orderBy}
+								onSort={sortBy}
 									className="hidden min-w-[120px] sm:table-cell"
 								/>
 								<SortableTableHead
 									label="Tags"
 									field="tags"
-									orderBy={orderBy}
-									onSort={onSort}
+								orderBy={orderBy}
+								onSort={sortBy}
 									className="hidden min-w-[140px] md:table-cell"
 								/>
 								<SortableTableHead
 									label="Ends"
 									field="end_date"
-									orderBy={orderBy}
-									onSort={onSort}
+								orderBy={orderBy}
+								onSort={sortBy}
 									className="min-w-[100px] whitespace-nowrap"
 								/>
 								<TableHead className="min-w-[80px]">Link</TableHead>

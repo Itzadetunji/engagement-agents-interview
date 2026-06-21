@@ -1,10 +1,10 @@
 import { format } from "date-fns";
-import type { DateRange } from "react-day-picker";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { formatOrderByLabel } from "@/lib/promotion-sort";
-import type { PromotionOrderBy } from "@shared/promotion";
+import { useDashboardFiltersStore } from "@/stores/dashboard-filters.store";
 
 interface FilterChip {
 	key: string;
@@ -12,51 +12,40 @@ interface FilterChip {
 	onClear?: () => void;
 }
 
-export function ActiveFiltersSummary({
-	view,
-	sessionName,
-	search,
-	dateRange,
-	brand,
-	orderBy,
-	onClearSearch,
-	onClearDateRange,
-	onClearBrand,
-}: {
-	view: "list" | "brand";
-	sessionName?: string;
-	search?: string;
-	dateRange?: DateRange;
-	brand?: string;
-	orderBy?: PromotionOrderBy;
-	onClearSearch?: () => void;
-	onClearDateRange?: () => void;
-	onClearBrand?: () => void;
-}) {
+export function ActiveFiltersSummary() {
+	const view = useDashboardFiltersStore((s) => s.view);
+	const scrapeSessionName = useDashboardFiltersStore((s) => s.scrapeSessionName);
+	const dateRange = useDashboardFiltersStore((s) => s.dateRange);
+	const brand = useDashboardFiltersStore((s) => s.brand);
+	const orderBy = useDashboardFiltersStore((s) => s.orderBy);
+	const clearSearch = useDashboardFiltersStore((s) => s.clearSearch);
+	const clearDateRange = useDashboardFiltersStore((s) => s.clearDateRange);
+	const clearBrand = useDashboardFiltersStore((s) => s.clearBrand);
+
+	const debouncedSearch = useDebouncedSearch();
+
 	const chips: FilterChip[] = [];
 
-	if (sessionName) {
-		chips.push({ key: "session", label: `Session: ${sessionName}` });
+	if (scrapeSessionName) {
+		chips.push({ key: "session", label: `Session: ${scrapeSessionName}` });
 	}
 
 	if (view === "list") {
-		if (search) {
+		if (debouncedSearch) {
 			chips.push({
 				key: "search",
-				label: `Search: "${search}"`,
-				onClear: onClearSearch,
+				label: `Search: "${debouncedSearch}"`,
+				onClear: clearSearch,
 			});
 		}
 
 		if (dateRange?.from) {
 			const from = format(dateRange.from, "LLL d, yyyy");
-			const to = dateRange.to
-				? format(dateRange.to, "LLL d, yyyy")
-				: "…";
+			const to = dateRange.to ? format(dateRange.to, "LLL d, yyyy") : "…";
 			chips.push({
 				key: "date",
 				label: `Dates: ${from} – ${to}`,
-				onClear: onClearDateRange,
+				onClear: clearDateRange,
 			});
 		}
 
@@ -64,7 +53,7 @@ export function ActiveFiltersSummary({
 			chips.push({
 				key: "brand",
 				label: `Brand: ${brand}`,
-				onClear: onClearBrand,
+				onClear: clearBrand,
 			});
 		}
 

@@ -7,58 +7,36 @@ import { PromotionsTable } from "@/components/dashboard/promotions-table";
 import { PromotionsTableSkeleton } from "@/components/dashboard/promotions-table-skeleton";
 import { Pagination } from "@/components/ui/pagination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toggleOrderBy } from "@/lib/promotion-sort";
+import { useDashboardFiltersStore } from "@/stores/dashboard-filters.store";
 import type { PaginationMeta } from "@shared/response";
-import type { PromotionOrderBy, PromotionWithBrand } from "@shared/promotion";
+import type { PromotionWithBrand } from "@shared/promotion";
 import type { BrandWithCount } from "@shared/brand";
 import type { Promotion } from "@shared/promotion";
-import type { DateRange } from "react-day-picker";
-
-type DashboardView = "list" | "brand";
+import type { DashboardView } from "@/stores/dashboard-filters.store";
 
 export function DashboardViewTabs({
-	view,
-	onViewChange,
 	isLoading,
-	sessionName,
-	debouncedSearch,
-	dateRange,
-	brand,
-	orderBy,
 	promotions,
 	brands,
 	pagination,
-	onSort,
 	onSelectPromotion,
-	onClearSearch,
-	onClearDateRange,
-	onClearBrand,
-	onPageChange,
 }: {
-	view: DashboardView;
-	onViewChange: (view: DashboardView) => void;
 	isLoading: boolean;
-	sessionName?: string;
-	debouncedSearch: string;
-	dateRange?: DateRange;
-	brand: string;
-	orderBy: PromotionOrderBy;
 	promotions: PromotionWithBrand[];
 	brands: Array<
 		BrandWithCount & { promotions: Promotion[] | PromotionWithBrand[] }
 	>;
 	pagination?: PaginationMeta;
-	onSort: (field: string) => void;
 	onSelectPromotion: (promotion: PromotionWithBrand) => void;
-	onClearSearch: () => void;
-	onClearDateRange: () => void;
-	onClearBrand: () => void;
-	onPageChange: (page: number) => void;
 }) {
+	const view = useDashboardFiltersStore((s) => s.view);
+	const setView = useDashboardFiltersStore((s) => s.setView);
+	const setPage = useDashboardFiltersStore((s) => s.setPage);
+
 	return (
 		<Tabs
 			value={view}
-			onValueChange={(value) => onViewChange(value as DashboardView)}
+			onValueChange={(value) => setView(value as DashboardView)}
 			className="flex min-w-0 flex-col gap-4"
 		>
 			<TabsList className="w-full sm:w-fit">
@@ -70,17 +48,7 @@ export function DashboardViewTabs({
 				</TabsTrigger>
 			</TabsList>
 
-			<ActiveFiltersSummary
-				view={view}
-				sessionName={sessionName}
-				search={debouncedSearch}
-				dateRange={dateRange}
-				brand={brand}
-				orderBy={view === "list" ? orderBy : undefined}
-				onClearSearch={onClearSearch}
-				onClearDateRange={onClearDateRange}
-				onClearBrand={onClearBrand}
-			/>
+			<ActiveFiltersSummary />
 
 			<TabsContent value="list" className="mt-0 flex min-w-0 flex-col gap-4">
 				{isLoading ? (
@@ -89,15 +57,13 @@ export function DashboardViewTabs({
 					<>
 						<PromotionsTable
 							items={promotions}
-							orderBy={orderBy}
-							onSort={onSort}
 							onSelectPromotion={onSelectPromotion}
 						/>
 						{pagination && pagination.total_pages > 1 && (
 							<Pagination
 								currentPage={pagination.current_page}
 								totalPages={pagination.total_pages}
-								onPageChange={onPageChange}
+								onPageChange={setPage}
 							/>
 						)}
 					</>

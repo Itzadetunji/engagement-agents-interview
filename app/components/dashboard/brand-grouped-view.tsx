@@ -43,7 +43,10 @@ export function BrandGroupedView({
 	return (
 		<div className="space-y-4">
 			{brands.map((brand) => (
-				<Card key={brand.id} className="overflow-hidden border border-border">
+				<Card
+					key={brand.id}
+					className="overflow-hidden border border-border"
+				>
 					<CardHeader className="px-4 py-4 sm:px-6">
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-start">
 							{brand.logoUrl ? (
@@ -101,7 +104,7 @@ export function BrandGroupedView({
 							</div>
 						</div>
 					</CardHeader>
-					<CardContent className="p-0 pb-4 sm:pb-6">
+					<CardContent className="p-0 pb-4">
 						<div className="overflow-x-auto border-t border-border">
 							<Table className="min-w-[480px] border-collapse">
 								<TableHeader>
@@ -128,7 +131,10 @@ export function BrandGroupedView({
 												<span className="block truncate">{p.name}</span>
 												<div className="mt-1 flex flex-wrap gap-1 sm:hidden">
 													{p.tags.map((tag) => (
-														<Badge key={tag} variant="secondary">
+														<Badge
+															key={tag}
+															variant="secondary"
+														>
 															{tagLabel(tag)}
 														</Badge>
 													))}
@@ -137,7 +143,11 @@ export function BrandGroupedView({
 											<TableCell className="hidden sm:table-cell">
 												<div className="flex flex-wrap gap-1">
 													{p.tags.map((tag) => (
-														<Badge key={tag} variant="secondary">
+														<Badge
+															key={tag}
+															variant="secondary"
+															className="capitalize"
+														>
 															{tagLabel(tag)}
 														</Badge>
 													))}
