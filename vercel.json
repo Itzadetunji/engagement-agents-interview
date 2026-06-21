@@ -1,0 +1,15 @@
+{
+  "experimentalServices": {
+      "app": {
+          "root": "app",
+          "routePrefix": "/",
+          "framework": "nextjs",
+          "buildCommand": "cd app && bun install --frozen-lockfile && bun run build"
+      },
+      "backend": {
+          "root": "backend",
+          "routePrefix": "/_/backend",
+          "buildCommand": "cd backend && bun install --frozen-lockfile && bun run typecheck"
+      }
+  }
+}
