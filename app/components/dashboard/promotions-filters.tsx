@@ -34,6 +34,7 @@ export function PromotionsFilters({
 	const { data: sessionsResponse } = useQuery({
 		queryKey: ["scrapeSessions"],
 		queryFn: fetchScrapeSessions,
+		meta: { errorLabel: "Failed to load scrape sessions" },
 	});
 	const sessions =
 		(sessionsResponse?.data as ScrapeSession[] | undefined) ?? [];

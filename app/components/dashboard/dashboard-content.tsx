@@ -16,6 +16,7 @@ import {
 	triggerScrape,
 } from "@/lib/api";
 import { toApiDate } from "@/lib/promotion-utils";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { useScrapeSocket } from "@/lib/scrape-socket";
 import {
 	useDashboardFilters,
@@ -45,6 +46,7 @@ export function DashboardContent() {
 		queryKey: ["scrapeSessions"],
 		queryFn: fetchScrapeSessions,
 		refetchInterval: 30_000,
+		meta: { errorLabel: "Failed to load scrape sessions" },
 	});
 
 	const sessions = scrapeSessionsQuery.data?.data as
@@ -122,12 +124,14 @@ export function DashboardContent() {
 				pageSize: 10,
 			}),
 		enabled: !isGroupByBrand && !!scrapeSessionId,
+		meta: { errorLabel: "Failed to load promotions" },
 	});
 
 	const brandsQuery = useQuery({
 		queryKey: ["brands", scrapeSessionId],
 		queryFn: () => fetchBrands(scrapeSessionId || undefined),
 		enabled: isGroupByBrand && !!scrapeSessionId,
+		meta: { errorLabel: "Failed to load brands" },
 	});
 
 	const scrapeMutation = useMutation({
@@ -135,7 +139,7 @@ export function DashboardContent() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["scrapeSessions"] });
 		},
-		onError: () => toast.error("Failed to start scrape"),
+		onError: (error) => toast.error(getApiErrorMessage(error)),
 	});
 
 	const isLoading =
