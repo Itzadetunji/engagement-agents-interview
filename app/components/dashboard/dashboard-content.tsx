@@ -23,6 +23,7 @@ import {
 import { toggleOrderBy } from "@/lib/promotion-sort";
 import { toApiDate } from "@/lib/promotion-utils";
 import { useScrapeSocket } from "@/lib/scrape-socket";
+import { useDebounce } from "@/hooks/use-debounce";
 import {
 	DEFAULT_PROMOTION_ORDER_BY,
 	type PromotionOrderBy,
@@ -32,6 +33,7 @@ import {
 export function DashboardContent() {
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
+	const debouncedSearch = useDebounce(search, 300);
 	const [dateRange, setDateRange] = useState<DateRange | undefined>();
 	const [brand, setBrand] = useState("");
 	const [scrapeSessionId, setScrapeSessionId] = useState<string>("");
@@ -101,11 +103,15 @@ export function DashboardContent() {
 		}
 	}, [sessions, scrapeSessionId]);
 
+	useEffect(() => {
+		setPage(1);
+	}, [debouncedSearch]);
+
 	const promotionsQuery = useQuery({
 		queryKey: [
 			"promotions",
 			scrapeSessionId,
-			search,
+			debouncedSearch,
 			dateRange?.from,
 			dateRange?.to,
 			brand,
@@ -115,7 +121,7 @@ export function DashboardContent() {
 		queryFn: () =>
 			fetchPromotions({
 				scrapeSessionId: scrapeSessionId || undefined,
-				search: search || undefined,
+				search: debouncedSearch || undefined,
 				startDate: toApiDate(dateRange?.from),
 				endDate: toApiDate(dateRange?.to),
 				brand: brand || undefined,
@@ -168,10 +174,7 @@ export function DashboardContent() {
 					setScrapeSessionId(value);
 					resetPage();
 				}}
-				onSearchChange={(value) => {
-					setSearch(value);
-					resetPage();
-				}}
+				onSearchChange={setSearch}
 				onDateRangeChange={(range) => {
 					setDateRange(range);
 					resetPage();
