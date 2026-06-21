@@ -1,10 +1,13 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { ExternalLink, Globe, Loader2, RefreshCw } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
+import { DateRangePicker } from "@/components/date-picker";
 import {
   PromotionDetailDialog,
   SocialLinks,
@@ -21,6 +24,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -32,6 +36,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   fetchBrands,
   fetchPromotions,
   fetchScrapeJob,
@@ -40,6 +51,27 @@ import {
 } from "@/lib/api";
 import type { BrandWithCount } from "@shared/brand";
 import type { Promotion, PromotionWithBrand } from "@shared/promotion";
+
+function toApiDate(date: Date | undefined): string | undefined {
+  return date ? format(date, "yyyy-MM-dd") : undefined;
+}
+
+function FilterField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={htmlFor}>{label}</Label>
+      {children}
+    </div>
+  );
+}
 
 function toPromotionWithBrand(
   promotion: Promotion,
@@ -66,8 +98,7 @@ function toPromotionWithBrand(
 function DashboardContent() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [brand, setBrand] = useState("");
   const [scrapeSessionId, setScrapeSessionId] = useState<string>("");
   const [page, setPage] = useState(1);
@@ -100,8 +131,8 @@ function DashboardContent() {
       "promotions",
       scrapeSessionId,
       search,
-      startDate,
-      endDate,
+      dateRange?.from,
+      dateRange?.to,
       brand,
       page,
     ],
@@ -109,8 +140,8 @@ function DashboardContent() {
       fetchPromotions({
         scrapeSessionId: scrapeSessionId || undefined,
         search: search || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
+        startDate: toApiDate(dateRange?.from),
+        endDate: toApiDate(dateRange?.to),
         brand: brand || undefined,
         page,
         pageSize: 10,
@@ -210,58 +241,68 @@ function DashboardContent() {
         <CardHeader>
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <select
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-            value={scrapeSessionId}
-            onChange={(e) => {
-              setScrapeSessionId(e.target.value);
-              setPage(1);
-            }}
-            disabled={sessions.length === 0}
-          >
-            {sessions.length === 0 ? (
-              <option value="">No scrapes yet</option>
-            ) : (
-              sessions.map((session) => (
-                <option key={session.id} value={session.id}>
-                  {session.name} ({session.promotionCount ?? 0} promos)
-                </option>
-              ))
-            )}
-          </select>
-          <Input
-            placeholder="Search name or brand"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-          />
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              setPage(1);
-            }}
-          />
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              setPage(1);
-            }}
-          />
-          <Input
-            placeholder="Brand name"
-            value={brand}
-            onChange={(e) => {
-              setBrand(e.target.value);
-              setPage(1);
-            }}
-          />
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <FilterField label="Scrape session" htmlFor="filter-scrape-session">
+            <Select
+              value={scrapeSessionId || undefined}
+              onValueChange={(value) => {
+                setScrapeSessionId(value);
+                setPage(1);
+              }}
+              disabled={sessions.length === 0}
+            >
+              <SelectTrigger id="filter-scrape-session" className="w-full">
+                <SelectValue
+                  placeholder={
+                    sessions.length === 0 ? "No scrapes yet" : "Select a scrape"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {sessions.map((session) => (
+                  <SelectItem key={session.id} value={session.id}>
+                    {session.name} ({session.promotionCount ?? 0} promos)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
+
+          <FilterField label="Search" htmlFor="filter-search">
+            <Input
+              id="filter-search"
+              placeholder="Search name or brand"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+            />
+          </FilterField>
+
+          <FilterField label="Date range" htmlFor="filter-date-range">
+            <DateRangePicker
+              id="filter-date-range"
+              range={dateRange}
+              onRangeChange={(range) => {
+                setDateRange(range);
+                setPage(1);
+              }}
+              placeholder="Pick a date range"
+            />
+          </FilterField>
+
+          <FilterField label="Brand" htmlFor="filter-brand">
+            <Input
+              id="filter-brand"
+              placeholder="Brand name"
+              value={brand}
+              onChange={(e) => {
+                setBrand(e.target.value);
+                setPage(1);
+              }}
+            />
+          </FilterField>
         </CardContent>
       </Card>
 
