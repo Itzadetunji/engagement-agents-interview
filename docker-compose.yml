@@ -11,7 +11,9 @@ services:
       SCRAPE_DELAY_MS: 500
       REQUEST_TIMEOUT_MS: 15000
     volumes:
-      - sqlite_data: /workspace/backend/data
+      - type: volume
+        source: sqlite_data
+        target: /workspace/backend/data
 
   app:
     build:

@@ -4,7 +4,8 @@ Single-mall MVP that scrapes promotions from [The Promenade Shops at Briargate](
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) 1.1+ (or Node.js 20+)
+- [Node.js](https://nodejs.org/) 20+
+- [npm](https://www.npmjs.com/) 10+
 - [Docker](https://www.docker.com/) (optional, for one-command startup)
 
 ## Quick start (Docker)
@@ -29,8 +30,8 @@ cp .env.example .env
 
 ```bash
 cd backend
-bun install
-bun run dev
+npm install
+npm run dev
 ```
 
 API runs at http://localhost:3001
@@ -39,8 +40,8 @@ API runs at http://localhost:3001
 
 ```bash
 cd app
-bun install
-bun run dev
+npm install
+npm run dev
 ```
 
 UI runs at http://localhost:3000
@@ -79,10 +80,10 @@ curl http://localhost:3001/brands
 
 ```bash
 # Backend typecheck
-cd backend && bun run typecheck
+cd backend && npm run typecheck
 
 # Frontend lint + build
-cd app && bun run lint && bun run build
+cd app && npm run lint && npm run build
 ```
 
 ## Project structure

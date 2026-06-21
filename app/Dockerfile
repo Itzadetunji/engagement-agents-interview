@@ -1,10 +1,14 @@
-FROM oven/bun:1
+FROM node:20-bookworm-slim
+
 WORKDIR /workspace
+
 COPY types ./types
-COPY app ./app
+COPY app/package.json app/package-lock.json ./app/
 WORKDIR /workspace/app
-RUN bun install --frozen-lockfile
+RUN npm ci
+
+COPY app/ ./
 ENV NEXT_PUBLIC_API_URL=http://localhost:3001
-RUN bun run build
+RUN npm run build
 EXPOSE 3000
-CMD ["bun", "run", "start"]
+CMD ["npm", "run", "start"]
