@@ -26,7 +26,7 @@ export function startScrape(_req: Request, res: Response): void {
 
   sendSuccess(
     res,
-    { jobId: result.jobId },
+    { jobId: result.jobId, scrapeSessionId: result.scrapeSessionId },
     "Scrape job started",
     StatusCodes.ACCEPTED,
   );

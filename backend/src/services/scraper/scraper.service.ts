@@ -3,6 +3,7 @@ import { config } from "../../config.js";
 import * as brandRepo from "../../db/brand.repository.js";
 import * as promotionRepo from "../../db/promotion.repository.js";
 import * as scrapeJobRepo from "../../db/scrapeJob.repository.js";
+import * as scrapeSessionRepo from "../../db/scrapeSession.repository.js";
 import { createHttpClient, fetchHtml } from "./http.client.js";
 import { parseDetailPage, parseListingPage } from "./parsers.js";
 import {
@@ -13,8 +14,12 @@ import { nowIso, sleep } from "./utils.js";
 
 const storeCache = new Map<string, string>();
 
-export async function runScrapeJob(jobId: string): Promise<void> {
+export async function runScrapeJob(
+  jobId: string,
+  scrapeSessionId: string,
+): Promise<void> {
   scrapeJobRepo.updateScrapeJob(jobId, { status: "running" });
+  scrapeSessionRepo.updateScrapeSession(scrapeSessionId, { status: "running" });
 
   const client = createHttpClient();
   let recordsFound = 0;
@@ -26,6 +31,7 @@ export async function runScrapeJob(jobId: string): Promise<void> {
     const listings = parseListingPage(listingHtml, config.baseUrl);
     recordsFound = listings.length;
     scrapeJobRepo.updateScrapeJob(jobId, { recordsFound });
+    scrapeSessionRepo.updateScrapeSession(scrapeSessionId, { recordsFound });
 
     storeCache.clear();
 
@@ -44,6 +50,7 @@ export async function runScrapeJob(jobId: string): Promise<void> {
 
         promotionRepo.upsertPromotion({
           uniqueId: listing.uniqueId,
+          scrapeSessionId,
           brandId,
           name: detail.name,
           description: detail.description,
@@ -69,9 +76,19 @@ export async function runScrapeJob(jobId: string): Promise<void> {
         recordsEnriched,
         recordsFailed,
       });
+      scrapeSessionRepo.updateScrapeSession(scrapeSessionId, {
+        recordsEnriched,
+        recordsFailed,
+      });
     }
 
     scrapeJobRepo.updateScrapeJob(jobId, {
+      status: "done",
+      recordsFound,
+      recordsEnriched,
+      recordsFailed,
+    });
+    scrapeSessionRepo.updateScrapeSession(scrapeSessionId, {
       status: "done",
       recordsFound,
       recordsEnriched,
@@ -81,6 +98,13 @@ export async function runScrapeJob(jobId: string): Promise<void> {
     const message = error instanceof Error ? error.message : "Scrape failed";
     console.error("[scraper] job failed:", message);
     scrapeJobRepo.updateScrapeJob(jobId, {
+      status: "failed",
+      recordsFound,
+      recordsEnriched,
+      recordsFailed,
+      error: message,
+    });
+    scrapeSessionRepo.updateScrapeSession(scrapeSessionId, {
       status: "failed",
       recordsFound,
       recordsEnriched,
@@ -148,19 +172,25 @@ let activeJobPromise: Promise<void> | null = null;
 
 export function triggerScrape(): {
   jobId: string;
+  scrapeSessionId: string;
   alreadyRunning: boolean;
 } {
   const active = scrapeJobRepo.findActiveScrapeJob();
   if (active || activeJobPromise) {
-    return { jobId: active?.id ?? "", alreadyRunning: true };
+    return { jobId: active?.id ?? "", scrapeSessionId: "", alreadyRunning: true };
   }
 
-  const job = scrapeJobRepo.createScrapeJob();
-  activeJobPromise = runScrapeJob(job.id).finally(() => {
+  const session = scrapeSessionRepo.createScrapeSession();
+  const job = scrapeJobRepo.createScrapeJob(session.id);
+  activeJobPromise = runScrapeJob(job.id, session.id).finally(() => {
     activeJobPromise = null;
   });
 
-  return { jobId: job.id, alreadyRunning: false };
+  return {
+    jobId: job.id,
+    scrapeSessionId: session.id,
+    alreadyRunning: false,
+  };
 }
 
 export function getScrapeJob(jobId: string) {

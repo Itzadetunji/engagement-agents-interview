@@ -3,6 +3,7 @@ import type { BrandWithCount } from "@shared/brand";
 import type { PromotionQuery, PromotionWithBrand } from "@shared/promotion";
 import type { SuccessResponse } from "@shared/response";
 import type { ScrapeJob, ScrapeTriggerResponse } from "@shared/scrape";
+import type { ScrapeSession } from "@shared/scrapeSession";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -19,10 +20,17 @@ export async function fetchPromotions(params: PromotionQuery) {
   return data;
 }
 
-export async function fetchBrands() {
+export async function fetchBrands(scrapeSessionId?: string) {
   const { data } = await api.get<
     SuccessResponse<Array<BrandWithCount & { promotions: PromotionWithBrand[] }>>
-  >("/brands");
+  >("/brands", { params: scrapeSessionId ? { scrapeSessionId } : undefined });
+  return data;
+}
+
+export async function fetchScrapeSessions() {
+  const { data } = await api.get<SuccessResponse<ScrapeSession[]>>(
+    "/scrape-sessions",
+  );
   return data;
 }
 

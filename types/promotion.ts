@@ -5,6 +5,7 @@ export type PromotionTag = "deals" | "style_notes" | "new_arrivals";
 export interface Promotion {
   id: string;
   uniqueId: string;
+  scrapeSessionId: string;
   brandId: string;
   name: string;
   description: string | null;
@@ -41,6 +42,7 @@ export interface PromotionQuery {
   startDate?: string;
   endDate?: string;
   brand?: string;
+  scrapeSessionId?: string;
   page?: number;
   pageSize?: number;
 }

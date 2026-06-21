@@ -5,6 +5,7 @@ import { nowIso } from "../services/scraper/utils.js";
 
 interface ScrapeJobRow {
   id: string;
+  scrape_session_id: string | null;
   status: ScrapeJobStatus;
   records_found: number;
   records_enriched: number;
@@ -27,15 +28,17 @@ function mapJob(row: ScrapeJobRow): ScrapeJob {
   };
 }
 
-export function createScrapeJob(): ScrapeJob {
+export function createScrapeJob(scrapeSessionId: string): ScrapeJob {
   const db = getDb();
   const id = uuidv4();
   const timestamp = nowIso();
 
   db.prepare(
-    `INSERT INTO scrape_jobs (id, status, records_found, records_enriched, records_failed, error, created_at, updated_at)
-     VALUES (?, 'pending', 0, 0, 0, NULL, ?, ?)`,
-  ).run(id, timestamp, timestamp);
+    `INSERT INTO scrape_jobs (
+      id, scrape_session_id, status, records_found, records_enriched,
+      records_failed, error, created_at, updated_at
+    ) VALUES (?, ?, 'pending', 0, 0, 0, NULL, ?, ?)`,
+  ).run(id, scrapeSessionId, timestamp, timestamp);
 
   return mapJob(
     db.prepare("SELECT * FROM scrape_jobs WHERE id = ?").get(id) as ScrapeJobRow,

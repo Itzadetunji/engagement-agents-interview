@@ -5,6 +5,7 @@ import { errorHandler } from "./middleware/error.middleware.js";
 import brandsRoutes from "./routes/brands.routes.js";
 import promotionsRoutes from "./routes/promotions.routes.js";
 import scrapeRoutes from "./routes/scrape.routes.js";
+import scrapeSessionsRoutes from "./routes/scrapeSessions.routes.js";
 
 export function createApp() {
   const app = express();
@@ -18,6 +19,7 @@ export function createApp() {
 
   app.use("/promotions", promotionsRoutes);
   app.use("/brands", brandsRoutes);
+  app.use("/scrape-sessions", scrapeSessionsRoutes);
   app.post("/scrape", startScrape);
   app.use("/scrape", scrapeRoutes);
 

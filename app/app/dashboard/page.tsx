@@ -35,6 +35,7 @@ import {
   fetchBrands,
   fetchPromotions,
   fetchScrapeJob,
+  fetchScrapeSessions,
   triggerScrape,
 } from "@/lib/api";
 import type { BrandWithCount } from "@shared/brand";
@@ -68,6 +69,7 @@ function DashboardContent() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [brand, setBrand] = useState("");
+  const [scrapeSessionId, setScrapeSessionId] = useState<string>("");
   const [page, setPage] = useState(1);
   const [groupByBrand, setGroupByBrand] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -80,10 +82,32 @@ function DashboardContent() {
     setDialogOpen(true);
   };
 
+  const scrapeSessionsQuery = useQuery({
+    queryKey: ["scrapeSessions"],
+    queryFn: fetchScrapeSessions,
+  });
+
+  const sessions = scrapeSessionsQuery.data?.data ?? [];
+
+  useEffect(() => {
+    if (sessions.length > 0 && !scrapeSessionId) {
+      setScrapeSessionId(sessions[0].id);
+    }
+  }, [sessions, scrapeSessionId]);
+
   const promotionsQuery = useQuery({
-    queryKey: ["promotions", search, startDate, endDate, brand, page],
+    queryKey: [
+      "promotions",
+      scrapeSessionId,
+      search,
+      startDate,
+      endDate,
+      brand,
+      page,
+    ],
     queryFn: () =>
       fetchPromotions({
+        scrapeSessionId: scrapeSessionId || undefined,
         search: search || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
@@ -91,13 +115,13 @@ function DashboardContent() {
         page,
         pageSize: 10,
       }),
-    enabled: !groupByBrand,
+    enabled: !groupByBrand && !!scrapeSessionId,
   });
 
   const brandsQuery = useQuery({
-    queryKey: ["brands"],
-    queryFn: fetchBrands,
-    enabled: groupByBrand,
+    queryKey: ["brands", scrapeSessionId],
+    queryFn: () => fetchBrands(scrapeSessionId || undefined),
+    enabled: groupByBrand && !!scrapeSessionId,
   });
 
   const scrapeJobQuery = useQuery({
@@ -114,6 +138,9 @@ function DashboardContent() {
     mutationFn: triggerScrape,
     onSuccess: (res) => {
       setActiveJobId(res.data.jobId);
+      if (res.data.scrapeSessionId) {
+        setScrapeSessionId(res.data.scrapeSessionId);
+      }
       toast.success("Scrape started");
     },
     onError: () => toast.error("Failed to start scrape"),
@@ -128,6 +155,7 @@ function DashboardContent() {
       );
       queryClient.invalidateQueries({ queryKey: ["promotions"] });
       queryClient.invalidateQueries({ queryKey: ["brands"] });
+      queryClient.invalidateQueries({ queryKey: ["scrapeSessions"] });
       setActiveJobId(null);
     }
     if (job.status === "failed") {
@@ -136,9 +164,9 @@ function DashboardContent() {
     }
   }, [scrapeJobQuery.data, queryClient]);
 
-  const isLoading = groupByBrand
-    ? brandsQuery.isLoading
-    : promotionsQuery.isLoading;
+  const isLoading =
+    scrapeSessionsQuery.isLoading ||
+    (groupByBrand ? brandsQuery.isLoading : promotionsQuery.isLoading);
 
   const pagination = promotionsQuery.data?.meta?.pagination;
 
@@ -182,7 +210,26 @@ function DashboardContent() {
         <CardHeader>
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <select
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+            value={scrapeSessionId}
+            onChange={(e) => {
+              setScrapeSessionId(e.target.value);
+              setPage(1);
+            }}
+            disabled={sessions.length === 0}
+          >
+            {sessions.length === 0 ? (
+              <option value="">No scrapes yet</option>
+            ) : (
+              sessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.name} ({session.promotionCount ?? 0} promos)
+                </option>
+              ))
+            )}
+          </select>
           <Input
             placeholder="Search name or brand"
             value={search}

@@ -125,16 +125,30 @@ export function findBrandByUniqueId(uniqueId: string): Brand | null {
   return row ? mapBrand(row) : null;
 }
 
-export function listBrandsWithCount(): Array<Brand & { promotionCount: number }> {
-  const rows = getDb()
-    .prepare(
-      `SELECT b.*, COUNT(p.id) as promotion_count
-       FROM brands b
-       LEFT JOIN promotions p ON p.brand_id = b.id
-       GROUP BY b.id
-       ORDER BY b.name ASC`,
-    )
-    .all() as Array<BrandRow & { promotion_count: number }>;
+export function listBrandsWithCount(
+  scrapeSessionId?: string,
+): Array<Brand & { promotionCount: number }> {
+  const db = getDb();
+  const rows = scrapeSessionId
+    ? (db
+        .prepare(
+          `SELECT b.*, COUNT(p.id) as promotion_count
+           FROM brands b
+           INNER JOIN promotions p ON p.brand_id = b.id AND p.scrape_session_id = ?
+           GROUP BY b.id
+           HAVING promotion_count > 0
+           ORDER BY b.name ASC`,
+        )
+        .all(scrapeSessionId) as Array<BrandRow & { promotion_count: number }>)
+    : (db
+        .prepare(
+          `SELECT b.*, COUNT(p.id) as promotion_count
+           FROM brands b
+           LEFT JOIN promotions p ON p.brand_id = b.id
+           GROUP BY b.id
+           ORDER BY b.name ASC`,
+        )
+        .all() as Array<BrandRow & { promotion_count: number }>);
 
   return rows.map((row) => ({
     ...mapBrand(row),

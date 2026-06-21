@@ -3,6 +3,7 @@ import { StatusCodes } from "http-status-codes";
 import { z } from "zod";
 import { config } from "../config.js";
 import * as promotionRepo from "../db/promotion.repository.js";
+import * as scrapeSessionRepo from "../db/scrapeSession.repository.js";
 import {
   buildPagination,
   sendError,
@@ -20,6 +21,7 @@ const promotionsQuerySchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
   brand: z.string().optional(),
+  scrapeSessionId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce
     .number()
@@ -45,7 +47,14 @@ export function listPromotions(req: Request, res: Response): void {
     return;
   }
 
-  const { items, total } = promotionRepo.listPromotions(parsed.data);
+  const scrapeSessionId =
+    parsed.data.scrapeSessionId ??
+    scrapeSessionRepo.findDefaultScrapeSession()?.id;
+
+  const { items, total } = promotionRepo.listPromotions({
+    ...parsed.data,
+    scrapeSessionId,
+  });
   const pagination = buildPagination(
     parsed.data.page,
     parsed.data.pageSize,

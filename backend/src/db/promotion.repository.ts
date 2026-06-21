@@ -7,6 +7,7 @@ import { nowIso } from "../services/scraper/utils.js";
 interface PromotionRow {
   id: string;
   unique_id: string;
+  scrape_session_id: string;
   brand_id: string;
   name: string;
   description: string | null;
@@ -37,6 +38,7 @@ interface BrandRow {
 
 export interface UpsertPromotionInput {
   uniqueId: string;
+  scrapeSessionId: string;
   brandId: string;
   name: string;
   description: string | null;
@@ -54,6 +56,7 @@ export interface PromotionFilters {
   startDate?: string;
   endDate?: string;
   brand?: string;
+  scrapeSessionId?: string;
   page: number;
   pageSize: number;
 }
@@ -62,6 +65,7 @@ function mapPromotion(row: PromotionRow): Promotion {
   return {
     id: row.id,
     uniqueId: row.unique_id,
+    scrapeSessionId: row.scrape_session_id,
     brandId: row.brand_id,
     name: row.name,
     description: row.description,
@@ -96,8 +100,10 @@ function mapBrandSummary(row: BrandRow): PromotionWithBrand["brand"] {
 export function upsertPromotion(input: UpsertPromotionInput): Promotion {
   const db = getDb();
   const existing = db
-    .prepare("SELECT * FROM promotions WHERE unique_id = ?")
-    .get(input.uniqueId) as PromotionRow | undefined;
+    .prepare(
+      "SELECT * FROM promotions WHERE unique_id = ? AND scrape_session_id = ?",
+    )
+    .get(input.uniqueId, input.scrapeSessionId) as PromotionRow | undefined;
 
   const timestamp = nowIso();
 
@@ -106,7 +112,8 @@ export function upsertPromotion(input: UpsertPromotionInput): Promotion {
       `UPDATE promotions SET
         brand_id = ?, name = ?, description = ?, image_url = ?,
         start_date = ?, end_date = ?, tags_json = ?, source_url = ?,
-        source_portal = ?, scraped_at = ?, updated_at = ? WHERE unique_id = ?`,
+        source_portal = ?, scraped_at = ?, updated_at = ?
+       WHERE unique_id = ? AND scrape_session_id = ?`,
     ).run(
       input.brandId,
       input.name,
@@ -120,24 +127,28 @@ export function upsertPromotion(input: UpsertPromotionInput): Promotion {
       input.scrapedAt,
       timestamp,
       input.uniqueId,
+      input.scrapeSessionId,
     );
     return mapPromotion(
       db
-        .prepare("SELECT * FROM promotions WHERE unique_id = ?")
-        .get(input.uniqueId) as PromotionRow,
+        .prepare(
+          "SELECT * FROM promotions WHERE unique_id = ? AND scrape_session_id = ?",
+        )
+        .get(input.uniqueId, input.scrapeSessionId) as PromotionRow,
     );
   }
 
   const id = uuidv4();
   db.prepare(
     `INSERT INTO promotions (
-      id, unique_id, brand_id, name, description, image_url,
+      id, unique_id, scrape_session_id, brand_id, name, description, image_url,
       start_date, end_date, tags_json, source_url, source_portal,
       scraped_at, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.uniqueId,
+    input.scrapeSessionId,
     input.brandId,
     input.name,
     input.description,
@@ -183,6 +194,11 @@ function buildWhereClause(filters: PromotionFilters): {
   if (filters.brand) {
     conditions.push("b.name LIKE ?");
     params.push(`%${filters.brand}%`);
+  }
+
+  if (filters.scrapeSessionId) {
+    conditions.push("p.scrape_session_id = ?");
+    params.push(filters.scrapeSessionId);
   }
 
   const clause =
@@ -276,9 +292,21 @@ export function findPromotionById(id: string): PromotionWithBrand | null {
   };
 }
 
-export function listPromotionsByBrandId(brandId: string): Promotion[] {
-  const rows = getDb()
-    .prepare("SELECT * FROM promotions WHERE brand_id = ? ORDER BY end_date ASC")
-    .all(brandId) as PromotionRow[];
+export function listPromotionsByBrandId(
+  brandId: string,
+  scrapeSessionId?: string,
+): Promotion[] {
+  const db = getDb();
+  const rows = scrapeSessionId
+    ? (db
+        .prepare(
+          `SELECT * FROM promotions
+           WHERE brand_id = ? AND scrape_session_id = ?
+           ORDER BY end_date ASC`,
+        )
+        .all(brandId, scrapeSessionId) as PromotionRow[])
+    : (db
+        .prepare("SELECT * FROM promotions WHERE brand_id = ? ORDER BY end_date ASC")
+        .all(brandId) as PromotionRow[]);
   return rows.map(mapPromotion);
 }
