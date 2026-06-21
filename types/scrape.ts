@@ -20,4 +20,5 @@ export interface ScrapeJob {
 export interface ScrapeTriggerResponse {
   jobId: string;
   scrapeSessionId: string;
+  sessionName: string;
 }

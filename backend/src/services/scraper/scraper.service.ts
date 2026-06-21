@@ -4,6 +4,12 @@ import * as brandRepo from "../../db/brand.repository.js";
 import * as promotionRepo from "../../db/promotion.repository.js";
 import * as scrapeJobRepo from "../../db/scrapeJob.repository.js";
 import * as scrapeSessionRepo from "../../db/scrapeSession.repository.js";
+import {
+  emitScrapeCompleted,
+  emitScrapeFailed,
+  emitScrapeProgress,
+  emitScrapeStarted,
+} from "../../socket/index.js";
 import { createHttpClient, fetchHtml } from "./http.client.js";
 import { parseDetailPage, parseListingPage } from "./parsers.js";
 import {
@@ -14,17 +20,36 @@ import { nowIso, sleep } from "./utils.js";
 
 const storeCache = new Map<string, string>();
 
+function socketPayload(
+  jobId: string,
+  scrapeSessionId: string,
+  sessionName: string,
+) {
+  return { jobId, scrapeSessionId, sessionName };
+}
+
 export async function runScrapeJob(
   jobId: string,
   scrapeSessionId: string,
+  sessionName: string,
 ): Promise<void> {
   scrapeJobRepo.updateScrapeJob(jobId, { status: "running" });
   scrapeSessionRepo.updateScrapeSession(scrapeSessionId, { status: "running" });
+  emitScrapeStarted(socketPayload(jobId, scrapeSessionId, sessionName));
 
   const client = createHttpClient();
   let recordsFound = 0;
   let recordsEnriched = 0;
   let recordsFailed = 0;
+
+  const emitProgress = () => {
+    emitScrapeProgress({
+      ...socketPayload(jobId, scrapeSessionId, sessionName),
+      recordsFound,
+      recordsEnriched,
+      recordsFailed,
+    });
+  };
 
   try {
     const listingHtml = await fetchHtml(client, "/sales");
@@ -32,6 +57,7 @@ export async function runScrapeJob(
     recordsFound = listings.length;
     scrapeJobRepo.updateScrapeJob(jobId, { recordsFound });
     scrapeSessionRepo.updateScrapeSession(scrapeSessionId, { recordsFound });
+    emitProgress();
 
     storeCache.clear();
 
@@ -80,6 +106,7 @@ export async function runScrapeJob(
         recordsEnriched,
         recordsFailed,
       });
+      emitProgress();
     }
 
     scrapeJobRepo.updateScrapeJob(jobId, {
@@ -90,6 +117,12 @@ export async function runScrapeJob(
     });
     scrapeSessionRepo.updateScrapeSession(scrapeSessionId, {
       status: "done",
+      recordsFound,
+      recordsEnriched,
+      recordsFailed,
+    });
+    emitScrapeCompleted({
+      ...socketPayload(jobId, scrapeSessionId, sessionName),
       recordsFound,
       recordsEnriched,
       recordsFailed,
@@ -110,6 +143,13 @@ export async function runScrapeJob(
       recordsEnriched,
       recordsFailed,
       error: message,
+    });
+    emitScrapeFailed({
+      ...socketPayload(jobId, scrapeSessionId, sessionName),
+      error: message,
+      recordsFound,
+      recordsEnriched,
+      recordsFailed,
     });
   }
 }
@@ -168,28 +208,20 @@ async function resolveBrandId(
   return brand.id;
 }
 
-let activeJobPromise: Promise<void> | null = null;
-
 export function triggerScrape(): {
   jobId: string;
   scrapeSessionId: string;
-  alreadyRunning: boolean;
+  sessionName: string;
 } {
-  const active = scrapeJobRepo.findActiveScrapeJob();
-  if (active || activeJobPromise) {
-    return { jobId: active?.id ?? "", scrapeSessionId: "", alreadyRunning: true };
-  }
-
   const session = scrapeSessionRepo.createScrapeSession();
   const job = scrapeJobRepo.createScrapeJob(session.id);
-  activeJobPromise = runScrapeJob(job.id, session.id).finally(() => {
-    activeJobPromise = null;
-  });
+
+  void runScrapeJob(job.id, session.id, session.name);
 
   return {
     jobId: job.id,
     scrapeSessionId: session.id,
-    alreadyRunning: false,
+    sessionName: session.name,
   };
 }
 

@@ -90,6 +90,18 @@ export function listScrapeSessions(): ScrapeSession[] {
   }));
 }
 
+export function findActiveScrapeSessions(): ScrapeSession[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT * FROM scrape_sessions
+       WHERE status IN ('pending', 'running')
+       ORDER BY created_at ASC`,
+    )
+    .all() as ScrapeSessionRow[];
+
+  return rows.map(mapSession);
+}
+
 export function updateScrapeSession(
   id: string,
   patch: Partial<{

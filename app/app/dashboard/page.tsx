@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ExternalLink, Globe, Loader2, RefreshCw } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { DateRangePicker } from "@/components/date-picker";
@@ -45,10 +45,10 @@ import {
 import {
   fetchBrands,
   fetchPromotions,
-  fetchScrapeJob,
   fetchScrapeSessions,
   triggerScrape,
 } from "@/lib/api";
+import { useScrapeSocket } from "@/lib/scrape-socket";
 import type { BrandWithCount } from "@shared/brand";
 import type { Promotion, PromotionWithBrand } from "@shared/promotion";
 
@@ -103,7 +103,6 @@ function DashboardContent() {
   const [scrapeSessionId, setScrapeSessionId] = useState<string>("");
   const [page, setPage] = useState(1);
   const [groupByBrand, setGroupByBrand] = useState(false);
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [selectedPromotion, setSelectedPromotion] =
     useState<PromotionWithBrand | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -116,9 +115,48 @@ function DashboardContent() {
   const scrapeSessionsQuery = useQuery({
     queryKey: ["scrapeSessions"],
     queryFn: fetchScrapeSessions,
+    refetchInterval: 30_000,
   });
 
   const sessions = scrapeSessionsQuery.data?.data ?? [];
+
+  const handleScrapeStarted = useCallback(
+    (payload: { sessionName: string }) => {
+      toast.info(`${payload.sessionName} scrape started in the background`);
+      queryClient.invalidateQueries({ queryKey: ["scrapeSessions"] });
+    },
+    [queryClient],
+  );
+
+  const handleScrapeCompleted = useCallback(
+    (payload: {
+      sessionName: string;
+      recordsEnriched: number;
+      recordsFailed: number;
+    }) => {
+      toast.success(
+        `${payload.sessionName} complete: ${payload.recordsEnriched} saved, ${payload.recordsFailed} failed`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["scrapeSessions"] });
+      queryClient.invalidateQueries({ queryKey: ["promotions"] });
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+    },
+    [queryClient],
+  );
+
+  const handleScrapeFailed = useCallback(
+    (payload: { sessionName: string; error: string }) => {
+      toast.error(`${payload.sessionName} failed: ${payload.error}`);
+      queryClient.invalidateQueries({ queryKey: ["scrapeSessions"] });
+    },
+    [queryClient],
+  );
+
+  const { runningSessionIds } = useScrapeSocket({
+    onStarted: handleScrapeStarted,
+    onCompleted: handleScrapeCompleted,
+    onFailed: handleScrapeFailed,
+  });
 
   useEffect(() => {
     if (sessions.length > 0 && !scrapeSessionId) {
@@ -155,45 +193,13 @@ function DashboardContent() {
     enabled: groupByBrand && !!scrapeSessionId,
   });
 
-  const scrapeJobQuery = useQuery({
-    queryKey: ["scrapeJob", activeJobId],
-    queryFn: () => fetchScrapeJob(activeJobId!),
-    enabled: !!activeJobId,
-    refetchInterval: (query) => {
-      const status = query.state.data?.data.status;
-      return status === "pending" || status === "running" ? 2000 : false;
-    },
-  });
-
   const scrapeMutation = useMutation({
     mutationFn: triggerScrape,
-    onSuccess: (res) => {
-      setActiveJobId(res.data.jobId);
-      if (res.data.scrapeSessionId) {
-        setScrapeSessionId(res.data.scrapeSessionId);
-      }
-      toast.success("Scrape started");
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scrapeSessions"] });
     },
     onError: () => toast.error("Failed to start scrape"),
   });
-
-  useEffect(() => {
-    const job = scrapeJobQuery.data?.data;
-    if (!job) return;
-    if (job.status === "done") {
-      toast.success(
-        `Scrape complete: ${job.recordsEnriched} saved, ${job.recordsFailed} failed`,
-      );
-      queryClient.invalidateQueries({ queryKey: ["promotions"] });
-      queryClient.invalidateQueries({ queryKey: ["brands"] });
-      queryClient.invalidateQueries({ queryKey: ["scrapeSessions"] });
-      setActiveJobId(null);
-    }
-    if (job.status === "failed") {
-      toast.error(job.error ?? "Scrape failed");
-      setActiveJobId(null);
-    }
-  }, [scrapeJobQuery.data, queryClient]);
 
   const isLoading =
     scrapeSessionsQuery.isLoading ||
@@ -212,26 +218,25 @@ function DashboardContent() {
         </div>
         <Button
           onClick={() => scrapeMutation.mutate()}
-          disabled={scrapeMutation.isPending || !!activeJobId}
+          disabled={scrapeMutation.isPending}
         >
-          {scrapeMutation.isPending || activeJobId ? (
+          {scrapeMutation.isPending ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <RefreshCw className="size-4" />
           )}
-          {activeJobId ? "Scraping…" : "Run Scrape"}
+          Run Scrape
         </Button>
       </div>
 
-      {scrapeJobQuery.data?.data && activeJobId && (
+      {runningSessionIds.size > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Scrape progress</CardTitle>
+            <CardTitle className="text-base">Background scrapes</CardTitle>
             <CardDescription>
-              Status: {scrapeJobQuery.data.data.status} — found{" "}
-              {scrapeJobQuery.data.data.recordsFound}, enriched{" "}
-              {scrapeJobQuery.data.data.recordsEnriched}, failed{" "}
-              {scrapeJobQuery.data.data.recordsFailed}
+              {runningSessionIds.size} scrape
+              {runningSessionIds.size === 1 ? "" : "s"} in progress. You can
+              keep browsing other sessions while they run.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -259,11 +264,17 @@ function DashboardContent() {
                 />
               </SelectTrigger>
               <SelectContent>
-                {sessions.map((session) => (
-                  <SelectItem key={session.id} value={session.id}>
-                    {session.name} ({session.promotionCount ?? 0} promos)
-                  </SelectItem>
-                ))}
+                {sessions.map((session) => {
+                  const isRunning = runningSessionIds.has(session.id);
+                  return (
+                    <SelectItem key={session.id} value={session.id}>
+                      {session.name}
+                      {isRunning
+                        ? " (scraping…)"
+                        : ` (${session.promotionCount ?? 0} promos)`}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </FilterField>

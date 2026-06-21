@@ -14,19 +14,13 @@ const jobParamSchema = z.object({
 export function startScrape(_req: Request, res: Response): void {
   const result = triggerScrape();
 
-  if (result.alreadyRunning) {
-    sendError(
-      res,
-      "A scrape job is already running",
-      ["Concurrent scrape not allowed"],
-      StatusCodes.CONFLICT,
-    );
-    return;
-  }
-
   sendSuccess(
     res,
-    { jobId: result.jobId, scrapeSessionId: result.scrapeSessionId },
+    {
+      jobId: result.jobId,
+      scrapeSessionId: result.scrapeSessionId,
+      sessionName: result.sessionName,
+    },
     "Scrape job started",
     StatusCodes.ACCEPTED,
   );
