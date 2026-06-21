@@ -1,6 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
 import type { Brand } from "@shared/brand.js";
-import type { Promotion, PromotionTag, PromotionWithBrand } from "@shared/promotion.js";
+import type {
+  Promotion,
+  PromotionOrderBy,
+  PromotionTag,
+  PromotionWithBrand,
+} from "@shared/promotion.js";
 import { getDb } from "./connection.js";
 import { nowIso } from "../services/scraper/utils.js";
 
@@ -57,8 +62,31 @@ export interface PromotionFilters {
   endDate?: string;
   brand?: string;
   scrapeSessionId?: string;
+  orderBy?: PromotionOrderBy;
   page: number;
   pageSize: number;
+}
+
+const DEFAULT_ORDER_BY: PromotionOrderBy = "end_date";
+
+function buildOrderClause(orderBy: PromotionOrderBy = DEFAULT_ORDER_BY): string {
+  const desc = orderBy.startsWith("-");
+  const field = desc ? orderBy.slice(1) : orderBy;
+
+  switch (field) {
+    case "end_date":
+      return desc
+        ? "p.end_date IS NULL, p.end_date DESC, p.name ASC"
+        : "p.end_date IS NULL, p.end_date ASC, p.name ASC";
+    case "name":
+      return desc ? "p.name DESC" : "p.name ASC";
+    case "brand":
+      return desc ? "b.name DESC, p.name ASC" : "b.name ASC, p.name ASC";
+    case "tags":
+      return desc ? "p.tags_json DESC, p.name ASC" : "p.tags_json ASC, p.name ASC";
+    default:
+      return "p.end_date IS NULL, p.end_date ASC, p.name ASC";
+  }
 }
 
 function mapPromotion(row: PromotionRow): Promotion {
@@ -214,6 +242,7 @@ export function listPromotions(filters: PromotionFilters): {
   const db = getDb();
   const { clause, params } = buildWhereClause(filters);
   const offset = (filters.page - 1) * filters.pageSize;
+  const orderClause = buildOrderClause(filters.orderBy);
 
   const totalRow = db
     .prepare(
@@ -230,7 +259,7 @@ export function listPromotions(filters: PromotionFilters): {
        FROM promotions p
        JOIN brands b ON b.id = p.brand_id
        ${clause}
-       ORDER BY p.end_date IS NULL, p.end_date ASC, p.name ASC
+       ORDER BY ${orderClause}
        LIMIT ? OFFSET ?`,
     )
     .all(...params, filters.pageSize, offset) as Array<

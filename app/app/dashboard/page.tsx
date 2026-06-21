@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { DateRangePicker } from "@/components/date-picker";
+import { UpDownIcon } from "@/components/svg-icons/up-down-icon";
 import {
 	PromotionDetailDialog,
 	SocialLinks,
@@ -50,7 +51,57 @@ import {
 } from "@/lib/api";
 import { useScrapeSocket } from "@/lib/scrape-socket";
 import type { BrandWithCount } from "@shared/brand";
-import type { Promotion, PromotionWithBrand } from "@shared/promotion";
+import {
+	DEFAULT_PROMOTION_ORDER_BY,
+	type Promotion,
+	type PromotionOrderBy,
+	type PromotionWithBrand,
+} from "@shared/promotion";
+
+function getSortDirection(
+	orderBy: PromotionOrderBy,
+	field: string,
+): "asc" | "desc" | null {
+	if (orderBy === field) return "asc";
+	if (orderBy === `-${field}`) return "desc";
+	return null;
+}
+
+function toggleOrderBy(
+	current: PromotionOrderBy,
+	field: string,
+): PromotionOrderBy {
+	if (current === field) return `-${field}` as PromotionOrderBy;
+	if (current === `-${field}`) return field as PromotionOrderBy;
+	return field as PromotionOrderBy;
+}
+
+function SortableTableHead({
+	label,
+	field,
+	orderBy,
+	onSort,
+}: {
+	label: string;
+	field: string;
+	orderBy: PromotionOrderBy;
+	onSort: (field: string) => void;
+}) {
+	const direction = getSortDirection(orderBy, field);
+
+	return (
+		<TableHead>
+			<button
+				type="button"
+				onClick={() => onSort(field)}
+				className="inline-flex items-center gap-1.5 font-medium hover:text-foreground"
+			>
+				{label}
+				<UpDownIcon sortDirection={direction} />
+			</button>
+		</TableHead>
+	);
+}
 
 function toApiDate(date: Date | undefined): string | undefined {
 	return date ? format(date, "yyyy-MM-dd") : undefined;
@@ -102,6 +153,9 @@ function DashboardContent() {
 	const [brand, setBrand] = useState("");
 	const [scrapeSessionId, setScrapeSessionId] = useState<string>("");
 	const [page, setPage] = useState(1);
+	const [orderBy, setOrderBy] = useState<PromotionOrderBy>(
+		DEFAULT_PROMOTION_ORDER_BY,
+	);
 	const [groupByBrand, setGroupByBrand] = useState(false);
 	const [selectedPromotion, setSelectedPromotion] =
 		useState<PromotionWithBrand | null>(null);
@@ -172,6 +226,7 @@ function DashboardContent() {
 			dateRange?.from,
 			dateRange?.to,
 			brand,
+			orderBy,
 			page,
 		],
 		queryFn: () =>
@@ -181,6 +236,7 @@ function DashboardContent() {
 				startDate: toApiDate(dateRange?.from),
 				endDate: toApiDate(dateRange?.to),
 				brand: brand || undefined,
+				orderBy,
 				page,
 				pageSize: 10,
 			}),
@@ -368,6 +424,11 @@ function DashboardContent() {
 				<>
 					<PromotionsTable
 						items={promotionsQuery.data?.data ?? []}
+						orderBy={orderBy}
+						onSort={(field) => {
+							setOrderBy((current) => toggleOrderBy(current, field));
+							setPage(1);
+						}}
 						onSelectPromotion={openPromotion}
 					/>
 					{pagination && pagination.total_pages > 1 && (
@@ -391,9 +452,13 @@ function DashboardContent() {
 
 function PromotionsTable({
 	items,
+	orderBy,
+	onSort,
 	onSelectPromotion,
 }: {
 	items: PromotionWithBrand[];
+	orderBy: PromotionOrderBy;
+	onSort: (field: string) => void;
 	onSelectPromotion: (promotion: PromotionWithBrand) => void;
 }) {
 	if (items.length === 0) {
@@ -412,10 +477,30 @@ function PromotionsTable({
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead>Promotion</TableHead>
-							<TableHead>Brand</TableHead>
-							<TableHead>Tags</TableHead>
-							<TableHead>Ends</TableHead>
+							<SortableTableHead
+								label="Promotion"
+								field="name"
+								orderBy={orderBy}
+								onSort={onSort}
+							/>
+							<SortableTableHead
+								label="Brand"
+								field="brand"
+								orderBy={orderBy}
+								onSort={onSort}
+							/>
+							<SortableTableHead
+								label="Tags"
+								field="tags"
+								orderBy={orderBy}
+								onSort={onSort}
+							/>
+							<SortableTableHead
+								label="Ends"
+								field="end_date"
+								orderBy={orderBy}
+								onSort={onSort}
+							/>
 							<TableHead>Link</TableHead>
 						</TableRow>
 					</TableHeader>

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { config } from "../config.js";
 import * as promotionRepo from "../db/promotion.repository.js";
 import * as scrapeSessionRepo from "../db/scrapeSession.repository.js";
+import type { PromotionOrderBy } from "@shared/promotion.js";
 import {
   buildPagination,
   sendError,
@@ -22,6 +23,18 @@ const promotionsQuerySchema = z.object({
     .optional(),
   brand: z.string().optional(),
   scrapeSessionId: z.uuid().optional(),
+  order_by: z
+    .enum([
+      "end_date",
+      "-end_date",
+      "name",
+      "-name",
+      "brand",
+      "-brand",
+      "tags",
+      "-tags",
+    ])
+    .default("end_date"),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce
     .number()
@@ -51,9 +64,12 @@ export function listPromotions(req: Request, res: Response): void {
     parsed.data.scrapeSessionId ??
     scrapeSessionRepo.findDefaultScrapeSession()?.id;
 
+  const { order_by, ...filters } = parsed.data;
+
   const { items, total } = promotionRepo.listPromotions({
-    ...parsed.data,
+    ...filters,
     scrapeSessionId,
+    orderBy: order_by as PromotionOrderBy,
   });
   const pagination = buildPagination(
     parsed.data.page,

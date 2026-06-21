@@ -37,12 +37,25 @@ export interface PromotionWithBrand extends Promotion {
   >;
 }
 
+export type PromotionOrderBy =
+  | "end_date"
+  | "-end_date"
+  | "name"
+  | "-name"
+  | "brand"
+  | "-brand"
+  | "tags"
+  | "-tags";
+
+export const DEFAULT_PROMOTION_ORDER_BY: PromotionOrderBy = "end_date";
+
 export interface PromotionQuery {
   search?: string;
   startDate?: string;
   endDate?: string;
   brand?: string;
   scrapeSessionId?: string;
+  orderBy?: PromotionOrderBy;
   page?: number;
   pageSize?: number;
 }

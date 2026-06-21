@@ -13,9 +13,15 @@ export const api = axios.create({
 });
 
 export async function fetchPromotions(params: PromotionQuery) {
+  const { orderBy, ...rest } = params;
   const { data } = await api.get<SuccessResponse<PromotionWithBrand[]>>(
     "/promotions",
-    { params },
+    {
+      params: {
+        ...rest,
+        order_by: orderBy,
+      },
+    },
   );
   return data;
 }
