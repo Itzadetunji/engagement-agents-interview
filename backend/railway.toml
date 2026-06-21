@@ -1,0 +1,24 @@
+# Backend API (Express + SQLite + Socket.IO)
+#
+# Railway setup:
+#   1. Create a service named "Backend" (or similar).
+#   2. Settings → Config file path: /backend/railway.toml
+#   3. Leave Root Directory empty (repo root) so shared types/ is available.
+#   4. Generate a public domain.
+#   5. Variables:
+#        NODE_ENV=production
+#        FRONTEND_URL=https://${{App.RAILWAY_PUBLIC_DOMAIN}}
+#        DATABASE_PATH=/data/promotions.db   # optional; attach a volume at /data
+#
+# Attach a volume mounted at /data if you want SQLite data to survive redeploys.
+
+[build]
+builder = "RAILPACK"
+buildCommand = "cd backend && bun install --frozen-lockfile && bun run typecheck"
+watchPatterns = ["backend/**", "types/**"]
+
+[deploy]
+startCommand = "cd backend && bun run start"
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
